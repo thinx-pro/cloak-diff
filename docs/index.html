@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cloak-diff</title>
+<meta name="description" content="Find text on a web page that people can't see but AI agents and scrapers read.">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #57606a; --line: #d0d7de; --soft: #f6f8fa;
+    --accent: #0969da; --bad: #cf222e; --bad-soft: #ffebe9; --ok: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --soft: #161b22;
+      --accent: #4493f8; --bad: #ff7b72; --bad-soft: #3c1618; --ok: #3fb950;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --soft: #161b22;
+    --accent: #4493f8; --bad: #ff7b72; --bad-soft: #3c1618; --ok: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -.01em; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .lede { color: var(--muted); margin: 6px 0 18px; max-width: 760px; }
+  code, textarea, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  button, .btn { font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--soft); color: var(--fg); padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  textarea { width: 100%; height: 150px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--fg); padding: 10px; font-size: 12.5px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--soft); }
+  iframe { display: block; width: 100%; height: 520px; border: 0; background: #fff; }
+  .results { padding: 12px; max-height: 520px; overflow: auto; }
+  .stat { margin: 0 0 10px; }
+  .stat b.bad { color: var(--bad); } .stat b.ok { color: var(--ok); }
+  .seg { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+  .seg.bad { border-color: var(--bad); background: var(--bad-soft); }
+  .seg .how { font-size: 12px; color: var(--muted); }
+  .seg .how code { font-size: 11.5px; }
+  .seg .t { margin-top: 2px; word-break: break-word; }
+  .seg.bad .t { color: var(--bad); }
+  .seg .why { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  h3 { font-size: 13px; margin: 14px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 28px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 6px; }
+  .card p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+  pre { background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; font-size: 12.5px; margin: 0; }
+  a.bm { display: inline-block; background: var(--accent); color: #fff; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: grab; }
+  .muted { color: var(--muted); font-size: 13px; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>cloak-diff <span>· what people can't see, but models read</span></h1>
+  <p class="lede">Paste a page's HTML. It is rendered here in a sandbox (its scripts don't run), and every piece of text a person can't see is listed: <code>display:none</code> blocks, off-screen and same-colour text, zero-size fonts, comments, and strings tucked inside <code>&lt;script&gt;</code> JSON. Hidden text that reads like instructions to an AI is flagged in red. Everything runs in your browser; nothing is uploaded.</p>
+
+  <div class="bar">
+    <button class="primary" id="scan">Scan</button>
+    <button id="example">Load example page</button>
+    <button id="clear">Clear</button>
+    <span class="muted" id="status"></span>
+  </div>
+  <textarea id="html" spellcheck="false" placeholder="Paste HTML here (View Source → Select all → Copy), or load the example."></textarea>
+
+  <div class="grid">
+    <div class="panel"><h2>What a person sees</h2><iframe id="frame" sandbox="allow-same-origin" title="Rendered preview"></iframe></div>
+    <div class="panel"><h2>What only a model reads</h2><div class="results" id="results"><p class="muted">Results appear here.</p></div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h2>Bookmarklet</h2>
+      <p>Drag this to your bookmarks bar, open any page, click it. It scans the live page, after its JavaScript has run, and shows the hidden text in a panel.</p>
+      <a class="bm" id="bm" href="#">cloak-diff</a>
+    </div>
+    <div class="card">
+      <h2>Command line</h2>
+      <p>Scans a URL in headless Chrome (or parses HTML without a browser). Exits 1 when hidden instructions are found, so you can use it in CI.</p>
+      <pre>npx github:thinx-pro/cloak-diff https://example.com</pre>
+    </div>
+    <div class="card">
+      <h2>As a scraping filter</h2>
+      <p>Keep only the text a person can see before it reaches your RAG pipeline or agent.</p>
+      <pre>npx github:thinx-pro/cloak-diff URL --strip</pre>
+    </div>
+  </div>
+
+  <footer>MIT · <a href="https://github.com/thinx-pro/cloak-diff">github.com/thinx-pro/cloak-diff</a> · Heuristic: it reports what is hidden and how, and it can miss techniques or flag ordinary text. Read the findings, don't just count them.</footer>
+</div>
+
+<script type="module">
+import { scanDom } from './lib/walker.js';
+import { directiveScore } from './lib/directive.js';
+import { bookmarkletSource } from './bookmarklet.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+$('bm').href = bookmarkletSource();
+$('bm').addEventListener('click', (e) => { e.preventDefault(); alert('Drag this button to your bookmarks bar, then click it on any page.'); });
+
+function show(r) {
+  const dir = r.segments.filter((s) => s.directive.directive).sort((a, b) => b.directive.score - a.directive.score);
+  const rest = r.segments.filter((s) => !s.directive.directive).sort((a, b) => b.chars - a.chars);
+  const blocks = r.segments.filter((s) => s.kind === 'hidden-text').length;
+  const total = r.visibleChars + r.hiddenChars;
+  const seg = (s, bad) => `<div class="seg ${bad ? 'bad' : ''}"><div class="how">${esc(s.reason)} · <code>${esc(s.where)}</code></div><div class="t">${esc(s.text.length > 600 ? s.text.slice(0, 599) + '…' : s.text)}</div>${bad ? `<div class="why">${esc(s.directive.hits.join(' · '))}</div>` : ''}</div>`;
+  $('results').innerHTML = `<p class="stat">Visible ${r.visibleChars.toLocaleString()} chars · hidden ${r.hiddenChars.toLocaleString()} chars (${total ? Math.round(100 * r.hiddenChars / total) : 0}%) in ${blocks} block${blocks === 1 ? '' : 's'} · ${dir.length ? `<b class="bad">${dir.length} read like instructions to a model</b>` : '<b class="ok">no model-directed hidden text</b>'}</p>`
+    + (dir.length ? '<h3>Model-directed</h3>' + dir.map((s) => seg(s, true)).join('') : '')
+    + (rest.length ? '<h3>Other hidden text</h3>' + rest.map((s) => seg(s, false)).join('') : '');
+}
+
+function scan() {
+  const html = $('html').value;
+  if (!html.trim()) { $('status').textContent = 'Paste some HTML first.'; return; }
+  $('status').textContent = 'Rendering…';
+  const f = $('frame');
+  f.onload = () => {
+    setTimeout(() => {
+      try {
+        const r = scanDom(f.contentDocument, directiveScore, {});
+        show(r);
+        $('status').textContent = '';
+      } catch (e) { $('status').textContent = 'Scan failed: ' + e.message; }
+    }, 300);
+  };
+  f.srcdoc = html;
+}
+$('scan').onclick = scan;
+$('clear').onclick = () => { $('html').value = ''; $('results').innerHTML = '<p class="muted">Results appear here.</p>'; $('frame').srcdoc = ''; };
+$('example').onclick = async () => {
+  $('html').value = await (await fetch('./example.html')).text();
+  scan();
+};
+if (location.hash === '#example') $('example').click();
+</script>
+</body>
+</html>

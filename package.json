@@ -1,0 +1,42 @@
+{
+  "name": "cloak-diff",
+  "version": "0.1.0",
+  "description": "Find text on a web page that people can't see but scrapers, RAG pipelines and AI agents read: hidden instructions, off-screen and same-colour text, script-embedded notes, and crawler-only content.",
+  "type": "module",
+  "bin": {
+    "cloak-diff": "bin/cloak-diff.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./walker": "./src/walker.js",
+    "./directive": "./src/directive.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/cloak.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "prompt-injection",
+    "indirect-prompt-injection",
+    "hidden-text",
+    "llm",
+    "rag",
+    "ai-agents",
+    "web-scraping",
+    "cloaking",
+    "security"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thinx-pro/cloak-diff.git"
+  }
+}
