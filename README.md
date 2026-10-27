@@ -2,6 +2,9 @@
 
 **Find the text on a web page that people can't see but AI agents, scrapers and RAG pipelines will read.**
 
+<!-- agent-preflight -->
+> **Also a Claude Code skill.** `cloak-diff` is part of [agent-preflight](https://github.com/thinx-pro/agent-preflight), 16 offline checks for coding agents: `/plugin marketplace add thinx-pro/agent-preflight` then `/plugin install cloak-diff@agent-preflight`, and ask Claude in plain words.
+
 ![version](https://img.shields.io/badge/version-0.1.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![node](https://img.shields.io/badge/node-%E2%89%A518%20(render%3A%20%E2%89%A522)-brightgreen) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 
 ![The cloak-diff bookmarklet listing hidden instructions on a test page](assets/bookmarklet.png)
