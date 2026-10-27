@@ -102,9 +102,3 @@ Reproduce: `node scripts/heldout-report.js` and `node scripts/field-test.js out.
 ## License
 
 MIT. If it saved you a debugging session, a ⭐ helps others find it.
-
----
-
-### 中文说明
-
-**cloak-diff**：找出网页里「人看不见、但 AI Agent / 爬虫 / RAG 会读到」的文字。10 月有研究者发现 WhatsApp 帮助页里藏着给客服机器人的指令（例如不要建议用户联系监管机构），页面上看不到，模型却会读到。cloak-diff 用无头 Chrome 真实渲染页面（或无浏览器的静态解析），列出所有被隐藏的文字及隐藏方式（`display:none`、移出屏幕、同色文字、零号字体、注释、`<script>` JSON 里的字符串等），并把其中「像是写给模型的指令」的部分标红；发现时退出码为 1，可放进 CI 自查网站。`--strip` 只输出人能看到的文字，可作为抓取过滤器；`--compare-bots` 对比浏览器与 GPTBot / ClaudeBot / PerplexityBot 拿到的内容。网页版与书签工具：<https://thinx-pro.github.io/cloak-diff/>。指令识别是启发式的，准确率按留出集和真实网站实测写在上面，会漏也会误报。
